@@ -1,17 +1,13 @@
 import 'package:dive_ui/dive_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dive_core/dive_core.dart';
 
 void main() {
   // We need the binding to be initialized before calling runApp.
   WidgetsFlutterBinding.ensureInitialized();
 
-  // // Configure globally for all Equatable instances via EquatableConfig
-  // EquatableConfig.stringify = true;
-
-  runApp(ProviderScope(child: AppWidget()));
+  runApp(AppWidget());
 }
 
 class AppWidget extends StatelessWidget {
@@ -62,10 +58,6 @@ class _BodyWidgetState extends State<BodyWidget> {
     if (_enableOBS) {
       DiveScene.create('Scene 1').then((scene) => setup(scene));
     }
-
-    /// DiveCore and other modules must use the same [ProviderContainer], so
-    /// it needs to be passed to DiveCore at the start.
-    DiveCore.providerContainer = ProviderScope.containerOf(context);
 
     _initialized = true;
   }

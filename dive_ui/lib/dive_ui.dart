@@ -1,26 +1,19 @@
 library dive_ui;
 
-import 'dart:io';
 import 'dart:math';
 
 import 'package:dive_core/dive_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as path;
 
 import 'blocs/dive_reference_panels.dart';
-import 'dive_audio_meter.dart';
 
 export 'blocs/dive_reference_panels.dart';
-export 'dive_audio_meter.dart';
 
 class DiveUI {
   /// DiveCore and DiveUI must use the same [ProviderContainer], so it needs
   /// to be passed to DiveCore at the start.
-  static void setup(BuildContext context) {
-    DiveCore.providerContainer = ProviderScope.containerOf(context);
-  }
+  static void setup(BuildContext context) {}
 }
 
 class DiveSourceCard extends StatefulWidget {
@@ -92,100 +85,6 @@ class DiveSourcePreview extends StatelessWidget {
   }
 }
 
-class DiveMediaPreview extends DivePreview {
-  DiveMediaPreview(this.mediaSource)
-      : super(mediaSource == null ? null : mediaSource.controller);
-
-  final DiveMediaSource mediaSource;
-
-  @override
-  Widget build(BuildContext context) {
-    final superWidget = super.build(context);
-
-    if (mediaSource == null) return superWidget;
-
-    final meter = Positioned(
-        left: 5,
-        top: 5,
-        right: 5,
-        bottom: 5,
-        child: SizedBox.expand(
-            child: DiveAudioMeter(volumeMeter: mediaSource.volumeMeter)));
-
-    final file = new File(mediaSource.localFile);
-    String filename = path.basename(file.path);
-    final camerasText = Center(
-        child:
-            Text(filename, style: TextStyle(color: Colors.grey, fontSize: 14)));
-
-    final buttons = Positioned(
-        right: 5,
-        bottom: 5,
-        child: DiveMediaButtonBar(
-            mediaSource: mediaSource, iconColor: Colors.grey));
-
-    final stack = Stack(
-      children: <Widget>[
-        superWidget,
-        camerasText,
-        buttons,
-        meter,
-      ],
-    );
-    final content = Container(child: stack, color: Colors.white);
-
-    return content;
-  }
-}
-
-/// A [DivePreview] with a [DiveAudioMeter] overlay using a [DiveVolumeMeter].
-class DiveMeterPreview extends DivePreview {
-  DiveMeterPreview({
-    TextureController controller,
-    this.volumeMeter,
-    Key key,
-    double aspectRatio,
-  }) : super(controller, key: key, aspectRatio: aspectRatio);
-
-  /// The volume meter to display over the preview.
-  final DiveVolumeMeter volumeMeter;
-
-  @override
-  Widget build(BuildContext context) {
-    final superWidget = super.build(context);
-    if (volumeMeter == null) return superWidget;
-
-    final meterH = Positioned(
-        left: 17,
-        top: 5,
-        right: 5,
-        bottom: 4,
-        child: SizedBox.expand(
-            child: DiveAudioMeter(
-          volumeMeter: volumeMeter,
-          vertical: false,
-        )));
-    final meterV = Positioned(
-        left: 5,
-        top: 5,
-        right: 5,
-        bottom: 5,
-        child:
-            SizedBox.expand(child: DiveAudioMeter(volumeMeter: volumeMeter)));
-
-    final stack = Stack(
-      children: <Widget>[
-        superWidget,
-        meterV,
-        meterH,
-      ],
-    );
-    final content = stack; // Container(child: stack, color: Colors.white);
-
-    return content;
-  }
-}
-
 /// A widget showing a preview of a video/image frame using a [Texture] widget.
 class DivePreview extends StatelessWidget {
   /// Creates a preview widget for the given texture preview controller.
@@ -212,193 +111,6 @@ class DivePreview extends StatelessWidget {
         : texture;
 
     return widget;
-  }
-}
-
-class DiveMediaPlayButton extends ConsumerWidget {
-  const DiveMediaPlayButton(
-      {Key key,
-      @required DiveMediaSource mediaSource,
-      this.iconColor = Colors.white})
-      : mediaSource = mediaSource,
-        super(key: key);
-
-  final DiveMediaSource mediaSource;
-  final Color iconColor;
-
-  @override
-  Widget build(BuildContext context, ScopedReader watch) {
-    if (mediaSource == null) {
-      return Container();
-    }
-
-    final stateModel = watch(mediaSource.stateProvider.state);
-
-    return IconButton(
-      icon: Icon(
-        stateModel.mediaState == DiveMediaState.PLAYING
-            ? Icons.pause_circle_filled_outlined
-            : Icons.play_circle_fill_outlined,
-        color: iconColor,
-      ),
-      tooltip: stateModel.mediaState == DiveMediaState.PLAYING
-          ? 'Pause video'
-          : 'Play video',
-      onPressed: () {
-        mediaSource.getState().then((newStateModel) async {
-          print("onPressed: state $newStateModel");
-          switch (newStateModel.mediaState) {
-            case DiveMediaState.STOPPED:
-            case DiveMediaState.ENDED:
-              await mediaSource.restart().then((value) {
-                print("restart completed");
-              });
-              break;
-            case DiveMediaState.PLAYING:
-              mediaSource.pause().then((value) {
-                print("pause completed");
-              });
-              break;
-            case DiveMediaState.PAUSED:
-              mediaSource.play().then((value) {
-                print("play completed");
-              });
-              break;
-            default:
-              break;
-          }
-        });
-      },
-    );
-  }
-}
-
-class DiveMediaStopButton extends StatelessWidget {
-  const DiveMediaStopButton(
-      {Key key, @required this.mediaSource, this.iconColor = Colors.white})
-      : super(key: key);
-
-  final DiveMediaSource mediaSource;
-  final Color iconColor;
-
-  @override
-  Widget build(BuildContext context) {
-    if (mediaSource == null) {
-      return Container();
-    }
-
-    return IconButton(
-      icon: Icon(
-        Icons.stop_circle_outlined,
-        color: iconColor,
-      ),
-      tooltip: 'Stop video',
-      onPressed: () async {
-        await mediaSource.stop().then((value) {
-          print("stop completed");
-        });
-      },
-    );
-  }
-}
-
-class DiveMediaDuration extends ConsumerWidget {
-  const DiveMediaDuration({Key key, @required this.mediaSource, this.textColor})
-      : super(key: key);
-
-  final DiveMediaSource mediaSource;
-  final Color textColor;
-
-  @override
-  Widget build(BuildContext context, ScopedReader watch) {
-    if (mediaSource == null) {
-      return Container();
-    }
-
-    final stateModel = watch(mediaSource.stateProvider.state);
-    final cur = DiveFormat.formatDuration(
-        Duration(milliseconds: stateModel.currentTime));
-    final dur =
-        DiveFormat.formatDuration(Duration(milliseconds: stateModel.duration));
-    final curWide = cur.padLeft(dur.length - cur.length);
-    final msg = "$curWide / $dur";
-    return Text(
-      msg,
-      style: TextStyle(color: textColor),
-      textWidthBasis: TextWidthBasis.parent,
-    );
-  }
-}
-
-class DiveMediaButtonBar extends StatelessWidget {
-  const DiveMediaButtonBar(
-      {Key key,
-      @required DiveMediaSource mediaSource,
-      this.iconColor = Colors.white})
-      : mediaSource = mediaSource,
-        super(key: key);
-
-  final DiveMediaSource mediaSource;
-  final Color iconColor;
-
-  @override
-  Widget build(BuildContext context) {
-    if (mediaSource == null) {
-      return Container();
-    }
-
-    final row = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        DiveMediaDuration(mediaSource: mediaSource, textColor: iconColor),
-        DiveMediaPlayButton(mediaSource: mediaSource, iconColor: iconColor),
-        DiveMediaStopButton(mediaSource: mediaSource, iconColor: iconColor),
-      ],
-    );
-    return row;
-  }
-}
-
-class DiveStreamPlayButton extends ConsumerWidget {
-  const DiveStreamPlayButton(
-      {Key key,
-      @required DiveOutput streamingOutput,
-      this.iconColor = Colors.white})
-      : streamingOutput = streamingOutput,
-        super(key: key);
-
-  final DiveOutput streamingOutput;
-  final Color iconColor;
-
-  @override
-  Widget build(BuildContext context, ScopedReader watch) {
-    if (streamingOutput == null) {
-      return Container();
-    }
-
-    final state = watch(streamingOutput.stateProvider.state);
-
-    return IconButton(
-      icon: state == DiveOutputStreamingState.active
-          ? Icon(
-              Icons.connected_tv,
-              color: iconColor,
-            )
-          : Icon(
-              Icons.live_tv,
-              color: iconColor,
-            ),
-      tooltip: state == DiveOutputStreamingState.active
-          ? 'Stop streaming'
-          : 'Start streaming',
-      onPressed: () {
-        if (state == DiveOutputStreamingState.active) {
-          streamingOutput.stop();
-        } else {
-          streamingOutput.start();
-        }
-      },
-    );
   }
 }
 

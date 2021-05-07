@@ -1,27 +1,9 @@
 import 'dart:async';
-import 'package:dive_core/dive_core.dart';
 import 'package:dive_obslib/dive_obslib.dart';
-import 'package:riverpod/riverpod.dart';
-import 'package:state_notifier/state_notifier.dart';
 
 enum DiveOutputStreamingState { stopped, active, paused, reconnecting }
 
-class DiveOutputStateNotifier extends StateNotifier<DiveOutputStreamingState> {
-  DiveOutputStreamingState get outputState => state;
-
-  DiveOutputStateNotifier(outputState)
-      : super(outputState ?? DiveOutputStreamingState.stopped);
-
-  void updateOutputState(DiveOutputStreamingState outputState) {
-    state = outputState;
-  }
-}
-
 class DiveOutput {
-  final stateProvider = StateNotifierProvider<DiveOutputStateNotifier>((ref) {
-    return DiveOutputStateNotifier(DiveOutputStreamingState.stopped);
-  }, name: 'name-DiveMediaSource');
-
   Timer _timer;
 
   /// Sync the media state from the media source to the state provider,
@@ -49,13 +31,7 @@ class DiveOutput {
   }
 
   /// Sync the media state from the media source to the state provider.
-  Future<void> _syncState() async {
-    DiveCore.notifierFor(stateProvider).updateOutputState(
-        DiveOutputStreamingState.values[obslib.outputGetState()]);
-    // final state = await DivePlugin.outputGetState();
-    // DiveCore.notifierFor(stateProvider)
-    //     .updateOutputState(DiveOutputStreamingState.values[state]);
-  }
+  Future<void> _syncState() async {}
 
   Future<bool> start() async {
     final rv = obslib.streamOutputStart();

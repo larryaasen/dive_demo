@@ -1,18 +1,13 @@
 library dive_core;
 
 import 'package:dive_obslib/dive_obslib.dart';
-import 'package:riverpod/riverpod.dart';
 
 export 'dive_format.dart';
 export 'dive_elements.dart';
 export 'dive_input_type.dart';
 export 'dive_input.dart';
-export 'dive_media_source.dart';
-export 'dive_volume_meter.dart';
 export 'dive_output.dart';
 export 'dive_sources.dart';
-export 'dive_system_log.dart';
-export 'dive_system_log.dart';
 export 'texture_controller.dart';
 
 class DiveCoreResolution {
@@ -108,18 +103,6 @@ class DiveCoreAspectRatio {
 ///   core.setupOBS(DiveCoreResolution.HD);
 ///
 class DiveCore {
-  /// For use with Riverpod
-  static ProviderContainer providerContainer;
-
-  static Result notifierFor<Result>(ProviderBase<Object, Result> provider) {
-    if (DiveCore.providerContainer == null) {
-      throw DiveCoreProviderContainerException();
-    }
-    return DiveCore.providerContainer != null
-        ? DiveCore.providerContainer.read(provider)
-        : null;
-  }
-
   void setupOBS(DiveCoreResolution resolution) {
     obslib.startObs(resolution.width, resolution.height);
   }
