@@ -41,11 +41,8 @@ class BodyWidget extends StatefulWidget {
 }
 
 class _BodyWidgetState extends State<BodyWidget> {
-  DiveCore _diveCore;
   DiveCoreElements _elements;
   bool _initialized = false;
-
-  static const bool _enableOBS = true; // Set to false for debugging
 
   @override
   void didChangeDependencies() {
@@ -54,17 +51,12 @@ class _BodyWidgetState extends State<BodyWidget> {
     if (_initialized) return;
 
     _elements = widget.elements;
-    _diveCore = DiveCore();
-    if (_enableOBS) {
-      DiveScene.create('Scene 1').then((scene) => setup(scene));
-    }
+    DiveScene.create('Scene 1').then((scene) => setup(scene));
 
     _initialized = true;
   }
 
   void setup(DiveScene scene) {
-    // _elements.currentScene = scene;
-
     DiveVideoMix.create().then((mix) {
       setState(() {
         _elements.videoMixes.add(mix);
@@ -82,7 +74,6 @@ class _BodyWidgetState extends State<BodyWidget> {
       _elements.videoMixes[0].controller,
       aspectRatio: DiveCoreAspectRatio.HD.ratio,
     );
-    print("videoMix=$videoMix");
 
     final mainContent = Column(
       crossAxisAlignment: CrossAxisAlignment.center,

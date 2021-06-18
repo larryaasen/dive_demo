@@ -9,12 +9,6 @@ import 'package:ffi/ffi.dart';
 /// The FFI loaded libobs library.
 DiveObslibFFI _lib;
 
-/// Tracks the first scene being created, and sets the output source if first
-bool _isFirstScene = true;
-
-/// The streaming service output.
-var _streamOutput;
-
 /// Connects to obslib using FFI. Will load the obslib library, load modules,
 /// reset video and audio, and create the streaming service.
 extension DiveFFIObslib on DiveBaseObslib {
