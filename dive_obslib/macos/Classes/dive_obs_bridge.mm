@@ -161,6 +161,12 @@ static void copy_frame_to_texture(size_t width, size_t height, OSType pixelForma
     CVPixelBufferRef pxbuffer = NULL;
     CVPixelBufferReleaseBytesCallback releaseCallback = shouldSwapRedBlue && !useSampleFrame ? BufferReleaseBytesCallback : NULL;
 
+    NSDictionary* attributes = @{
+        (id)kCVPixelBufferPixelFormatTypeKey : @(pixelFormatType),
+        (id)kCVPixelBufferOpenGLCompatibilityKey : @YES,
+        (id)kCVPixelBufferMetalCompatibilityKey : @YES
+    };
+
     CVReturn status = CVPixelBufferCreateWithBytes(kCFAllocatorDefault,
                                                    width,
                                                    height,
@@ -169,7 +175,7 @@ static void copy_frame_to_texture(size_t width, size_t height, OSType pixelForma
                                                    linesize,
                                                    releaseCallback,
                                                    NULL,
-                                                   NULL,
+                                                   (__bridge CFDictionaryRef)attributes,
                                                    &pxbuffer);
     if (status != kCVReturnSuccess) {
         NSLog(@"copy_frame_to_source: Operation failed");
