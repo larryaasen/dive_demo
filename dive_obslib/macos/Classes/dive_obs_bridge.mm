@@ -18,9 +18,6 @@ struct key_cmp_str
    }
 };
 
-// obs is not designed for hot reload, so only start it once
-bool obs_started = false;
-
 static std::map<unsigned int, const char *> videomix_uuid_list;
 
 /// Map of all texture sources where the key is a source UUID and the value is a texture source pointer
@@ -28,12 +25,7 @@ static std::map<const char *, TextureSource *, key_cmp_str> _textureSourceMap;
 /// A duplicate map of all texture source that provides Objective-C reference counting
 static NSMutableDictionary *_textureSources = [NSMutableDictionary new];
 
-/// Tracks the first scene being created, and sets the output source if it is the first
-static bool _isFirstScene = true;
-
-static bool captureSampleFrame = false;
 static bool useSampleFrame = true;
-static int frameCount = 0;
 static NSData *theData = NULL;
 
 static void videomix_callback(void *param, struct video_data *frame);
@@ -124,25 +116,56 @@ void BufferReleaseBytesCallback(void *releaseRefCon, const void *baseAddress) {
 static void copy_frame_to_texture(size_t width, size_t height, OSType pixelFormatType, size_t linesize, uint8_t *data,
                                   TextureSource *textureSource, bool shouldSwapRedBlue=false)
 {
-    if (captureSampleFrame) {
-        frameCount++;
-        if (frameCount == 100) {
-            NSMutableArray *lines = [NSMutableArray new];
-            [lines addObject:[NSString stringWithFormat:@"\n"]];
-            [lines addObject:[NSString stringWithFormat:@"width=%ld;", width]];
-            [lines addObject:[NSString stringWithFormat:@"height=%ld;", height]];
-            [lines addObject:[NSString stringWithFormat:@"pixelFormatType=%d;", pixelFormatType]];
-            [lines addObject:[NSString stringWithFormat:@"linesize=%ld;", linesize]];
-            
-            NSData *theData = [NSData dataWithBytesNoCopy:&data[0]
-                                                   length:linesize*height
-                                             freeWhenDone:NO];
-            [theData writeToFile:@"demo_frame" atomically:NO];
-            printf([[lines componentsJoinedByString:@"\n"] cStringUsingEncoding:NSASCIIStringEncoding]);
+    if (useSampleFrame) {
+        if (theData == NULL) {
+            NSString *path =
+              [[NSBundle mainBundle] pathForResource:@"demo_frame"
+                                              ofType:@""];
+            theData = [NSData dataWithContentsOfFile:path];
         }
+        data = (uint8_t *)[theData bytes];
+        width=1280;
+        height=720;
+        pixelFormatType=kCVPixelFormatType_32BGRA;
+        linesize=width*4;
+    }
+
+    NSDictionary *attributes = @{
+        (NSString *)kCVPixelBufferMetalCompatibilityKey : @YES
+    };
+
+    CVPixelBufferRef pxbuffer = NULL;
+    CVReturn status = CVPixelBufferCreate(kCFAllocatorDefault, width, height, pixelFormatType, (__bridge CFDictionaryRef)attributes, &pxbuffer);
+    
+    CVPixelBufferLockBaseAddress(pxbuffer, 0);
+
+    void *copyBaseAddress = CVPixelBufferGetBaseAddress(pxbuffer);
+    memcpy(copyBaseAddress, data, linesize*height);
+
+    CVPixelBufferUnlockBaseAddress(pxbuffer, 0);
+    if (status != kCVReturnSuccess || pxbuffer == NULL) {
+        NSLog(@"copy_frame_to_source: Operation failed");
         return;
     }
-    else if (useSampleFrame) {
+
+    [textureSource captureSample: pxbuffer];
+//    CFRelease(pxbuffer);
+    
+    // -6660: An otherwise undefined error occurred.
+    
+    /*
+     https://developer.apple.com/library/archive/qa/qa1781/_index.html
+     Important: You cannot use CVPixelBufferCreateWithBytes() or CVPixelBufferCreateWithPlanarBytes() with
+     kCVPixelBufferIOSurfacePropertiesKey. Calling CVPixelBufferCreateWithBytes() or CVPixelBufferCreateWithPlanarBytes()
+     will result in CVPixelBuffers that are not IOSurface-backed and thus failure in creating CVOpenGLESTextures from
+     these pixel buffers. Must use CVPixelBufferCreate().
+     */
+}
+
+static void copy_frame_to_texture_ORIGINAL(size_t width, size_t height, OSType pixelFormatType, size_t linesize, uint8_t *data,
+                                  TextureSource *textureSource, bool shouldSwapRedBlue=false)
+{
+    if (useSampleFrame) {
         if (theData == NULL) {
             NSString *path =
               [[NSBundle mainBundle] pathForResource:@"demo_frame"
@@ -155,18 +178,15 @@ static void copy_frame_to_texture(size_t width, size_t height, OSType pixelForma
         pixelFormatType=kCVPixelFormatType_32BGRA;
         linesize=5120;
     }
-    else {
-    }
 
     CVPixelBufferRef pxbuffer = NULL;
     CVPixelBufferReleaseBytesCallback releaseCallback = shouldSwapRedBlue && !useSampleFrame ? BufferReleaseBytesCallback : NULL;
-
     NSDictionary* attributes = @{
         (id)kCVPixelBufferPixelFormatTypeKey : @(pixelFormatType),
         (id)kCVPixelBufferOpenGLCompatibilityKey : @YES,
-        (id)kCVPixelBufferMetalCompatibilityKey : @YES
+        (NSString*)kCVPixelBufferMetalCompatibilityKey : @YES
     };
-
+    
     CVReturn status = CVPixelBufferCreateWithBytes(kCFAllocatorDefault,
                                                    width,
                                                    height,
@@ -177,7 +197,7 @@ static void copy_frame_to_texture(size_t width, size_t height, OSType pixelForma
                                                    NULL,
                                                    (__bridge CFDictionaryRef)attributes,
                                                    &pxbuffer);
-    if (status != kCVReturnSuccess) {
+    if (status != kCVReturnSuccess || pxbuffer == NULL) {
         NSLog(@"copy_frame_to_source: Operation failed");
         return;
     }

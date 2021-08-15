@@ -25,16 +25,18 @@
 - (void)dealloc {
     if (_latestPixelBuffer) {
         CFRelease(_latestPixelBuffer);
+        _latestPixelBuffer = NULL;
     }
 }
 
+/// Copy the contents of the texture into a `CVPixelBuffer`. */
+/// Conforms to the protocol FlutterTexture.
 - (CVPixelBufferRef)copyPixelBuffer {
     CVPixelBufferRef pixelBuffer = _latestPixelBuffer;
     while (!OSAtomicCompareAndSwapPtrBarrier(pixelBuffer, nil, (void **)&_latestPixelBuffer)) {
         pixelBuffer = _latestPixelBuffer;
     }
 
-//    printf("TextureSource: copyPixelBuffer %s\n", self.trackingUUID.UTF8String);
     return pixelBuffer;
 }
 
@@ -44,16 +46,13 @@
     self._sampleCount++;
     CFRetain(newBuffer);
     CVPixelBufferRef old = _latestPixelBuffer;
-//    atomic_compare_exchange_strong(<#object#>, <#expected#>, <#desired#>);
     while (!OSAtomicCompareAndSwapPtrBarrier(old, newBuffer, (void **)&_latestPixelBuffer)) {
         old = _latestPixelBuffer;
     }
     if (old != nil) {
         CFRelease(old);
     }
-//    printf("TextureSource: before textureFrameAvailable\n");
     [self.registry textureFrameAvailable:self.textureId];
-//    printf("TextureSource captureSample: %s: count=%ld\n", self.trackingUUID.UTF8String, self._sampleCount);
 }
 
 @end
